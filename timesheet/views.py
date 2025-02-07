@@ -313,7 +313,7 @@ def download_timesheets(request):
     ws["B2"] = end_date.strftime("%Y-%m-%d")
 
     headers = [
-        "NO.", "Employee ID", "Full Name", "Shift Days",
+        "NO.", "Employee ID", "Full Name", "Working Days",
         "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
         "Total Hours"
     ]
@@ -392,8 +392,10 @@ def download_timesheets(request):
         round(total_hours_overall, 2)
     ]
 
-    for col_num, value in enumerate(total_row, start=1):
-        ws.cell(row=row_num, column=col_num, value=value).font = openpyxl.styles.Font(bold=True)
+    # Insert total hours overall
+    ws.cell(row=row_num, column=11, value="Total Hours Overall:").font = openpyxl.styles.Font(bold=True)
+    ws.cell(row=row_num, column=12, value=round(total_hours_overall, 2)).font = openpyxl.styles.Font(bold=True)
+
 
     wb.save(file_path)
 

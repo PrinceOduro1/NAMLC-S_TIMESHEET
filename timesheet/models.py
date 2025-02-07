@@ -24,7 +24,7 @@ class EmployeeTimesheet(models.Model):
     # Calculate total hours on site
     def calculate_hours(self):
         if self.check_out_time:
-            return round((self.check_out_time - self.check_in_time).total_seconds() / 3600, 2)
+            return round(self.check_out_time.hour - self.check_in_time.hour, 2)
         return None
 
     # Auto-calculate hours before saving
