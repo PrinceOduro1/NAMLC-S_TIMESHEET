@@ -1,0 +1,129 @@
+{% extends 'base_dashboard.html' %}
+
+{% block content %}
+    <div id="view-time-sheet">
+        <h2>View Time Sheet</h2>
+        <p>Here you can view the time sheet details.</p>
+
+        <!-- Time Range Filter and Search Bar -->
+        <div class="all_users">
+            <div class="filter-container">
+                <select id="timeRangeFilter" onchange="filterByTimeRange()">
+                    <option value="today" {% if time_range == 'today' %}selected{% endif %}>Today</option>
+                    <option value="one_week" {% if time_range == 'one_week' %}selected{% endif %}>One Week</option>
+                    <option value="one_month" {% if time_range == 'one_month' %}selected{% endif %}>One Month</option>
+                    <option value="one_year" {% if time_range == 'one_year' %}selected{% endif %}>One Year</option>
+                    <option value="all" {% if time_range == 'all' %}selected{% endif %}>All</option>
+                </select>
+                <input type="text" id="searchInput" placeholder="Search by employee id..." value="{{ request.GET.search }}" onkeyup="filterTable()"/>
+            </div>
+
+            <!-- Table Content -->
+            <div class="table-container">
+                <div class="print-container">
+                    <button onclick="printTable()">Print to PDF</button>
+                    <button onclick="downloadExcel()">Download Excel</button>
+                </div>
+                <h2>Timesheets</h2>
+                <table id="preferencesTable">
+                    <thead>
+                        <tr>
+                            <th>NO.</th>
+                            <th>Employee ID</th>
+                            <th>TIME IN</th>
+                            <th>TIME OUT</th>
+                            <th>HOURS WORKED</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for timesheet in timesheets %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ timesheet.employee.employee_id }}</td>
+                            <td>{{ timesheet.check_in_time }}</td>
+                            <td>{{ timesheet.check_out_time }}</td>
+                            <td>{{ timesheet.hours_on_site }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <style>
+            /* Print styles */
+            @media print {
+                .wrapper .all_users {
+                    position: relative;
+                    top: 0;
+                    left: 0;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse; /* Ensure borders collapse */
+                }
+                th, td {
+                    border: 1px solid black; /* Ensures borders in print */
+                    padding: 12px;
+                    text-align: left;
+                }
+                th {
+                    background-color: blue;
+                    font-weight: bold;
+                    color: white;
+                }
+                td {
+                    vertical-align: top;
+                    color: #555;
+                }
+                .no-print {
+                    display: none; /* Hide buttons when printing */
+                }
+            }
+        </style>
+
+        <script>
+            // Function to filter the table by name
+            function filterTable() {
+                const input = document.getElementById('searchInput');
+                const filter = input.value.toLowerCase();
+                const table = document.getElementById('preferencesTable');
+                const tr = table.getElementsByTagName('tr');
+
+                for (let i = 0; i < tr.length; i++) {
+                    const td = tr[i].getElementsByTagName('td')[1]; // Column for Employee ID
+                    if (td) {
+                        const txtValue = td.textContent || td.innerText;
+                        tr[i].style.display = txtValue.toLowerCase().includes(filter) ? "" : "none";
+                    }
+                }
+            }
+
+            // Function to filter by time range and keep search query in the URL
+            function filterByTimeRange() {
+                const timeRange = document.getElementById('timeRangeFilter').value;
+                const searchQuery = document.getElementById('searchInput').value;
+                window.location.href = "?time_range=" + timeRange + "&search=" + searchQuery; // Reload with both filters
+            }
+
+            // Function to download Excel with custom formatting
+            function downloadExcel() {
+                const timeRange = document.getElementById('timeRangeFilter').value;
+                const searchQuery = document.getElementById('searchInput').value;
+                window.location.href = '{% url "download_timesheets" %}?search=' + encodeURIComponent(searchQuery) + '&time_range=' + encodeURIComponent(timeRange);
+            }
+
+            // Function to print the table content as PDF
+            function printTable() {
+                const printContent = document.getElementById('preferencesTable').outerHTML;
+                const newWindow = window.open('', '', 'height=800,width=1000');
+                newWindow.document.write('<html><head><title>Print Timesheet</title>');
+                newWindow.document.write('</head><body>');
+                newWindow.document.write(printContent);
+                newWindow.document.write('</body></html>');
+                newWindow.document.close();
+                newWindow.print();
+            }
+        </script>
+    </div>
+{% endblock %}

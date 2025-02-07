@@ -1,0 +1,249 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - NGUYU MINING LIMITED</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            min-height: 100vh;
+        }
+        
+
+        .sidebar {
+            width: 250px;
+            background-color: #343a40;
+            color: white;
+            padding: 20px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+            display: block;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+        }
+
+        .sidebar a:hover {
+            background-color: #495057;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            flex-grow: 1;
+            background-color: #f8f9fa;
+        }
+
+        .navbar-brand img {
+            width: 200px;
+            height: auto;
+        }
+
+        .chart-container {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: relative;
+                height: auto;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .navbar-nav {
+                flex-direction: column;
+            }
+        }
+                /* Flex container for the dynamic sections */
+        .dynamic-container {
+            display: flex;
+            justify-content: space-between; /* Distributes space between the elements */
+            gap: 20px; /* Adds space between the elements */
+            padding-right: 30%;
+        }
+
+        /* Individual dynamic elements */
+        .dynamic, .dynamic1 {
+            border: 2px solid #000;
+            padding: 10px;
+            width: 35%; /* Adjust the width as needed */
+            text-align: center;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-top: 15px;
+        }
+
+
+        #total-check-ins {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        #active_employees {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        #department-data {
+            font-size: 16px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h3>Navigation</h3>
+        <a href="#" onclick="loadDashboard()">Dashboard</a>
+        <a href="{% url 'view_timesheet' %}">View Time Sheet</a>
+        <a href="{% url 'logout'%}">Logout</a>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Navigation Bar -->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="{% url 'index'%}">
+                    <!-- Logo Image Instead of Text -->
+                    <img src="{% static 'img/nguvu_black-retina.png' %}" alt="NGUVU LIMITED">
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="{% url 'index' %}">HOME</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'sign_in' %}">TIMESHEET</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'logout'%}">LOGOUT</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+        <!-- Dynamic Values for Total Check-ins -->
+        <!-- Flex container for side-by-side layout -->
+        <div class="dynamic-container">
+            <div class="dynamic">
+                <p id="total-check-ins">Total Check-ins Today: Loading...</p>
+                <div id="department-data">Loading Department Data...</div>
+            </div>
+            
+            <div class="dynamic1">
+                <p id="active_employees">Active Employees: Loading...</p>
+                <p id="total-check-out">Total Check-ins Today: Loading...</p>
+            </div>
+        </div>
+
+
+        <!-- Dashboard Content -->
+        <div id="dashboard-content" class="chart-container">
+            <h2>Dashboard</h2>
+            <p>Welcome to the dashboard. Here you can view analytics and reports.</p>
+            
+
+            <!-- Histogram Chart Placeholder -->
+            <div id="histogram-chart">
+                <canvas id="myChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Chart.js for Histogram -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom JS -->
+    <script>
+        // Function to load dashboard content and render chart with dynamic data
+        function loadDashboard() {
+    const dashboardContent = document.getElementById('dashboard-content');
+    dashboardContent.innerHTML = ` 
+        <h2>Dashboard</h2>
+        <p>Welcome to the dashboard. Here you can view analytics and reports.</p>
+        <div id="histogram-chart">
+            <canvas id="myChart" width="400" height="200"></canvas>
+        </div>
+    `;
+    fetchDataAndRenderChart(); // Fetch data and render the chart
+    fetchTotalCheckIns(); // Fetch total check-ins and department data
+}
+
+        // Fetch data from the server-side (Django) and render the chart
+        function fetchDataAndRenderChart() {
+            fetch("{% url 'get_employee_attendance_data' %}")
+                .then(response => response.json())
+                .then(data => {
+                    const ctx = document.getElementById('myChart').getContext('2d');
+                    const myChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: Object.keys(data.attendance_data), // Departments
+                            datasets: [{
+                                label: 'Employee Attendance',
+                                data: Object.values(data.attendance_data), // Check-in counts
+                                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                borderColor: 'rgba(75, 192, 192, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                })
+                .catch(error => console.error('Error fetching data:', error));
+        }
+
+        // Fetch Total Check-ins and Department Data
+        function fetchTotalCheckIns() {
+            fetch("{% url 'get_employee_attendance_data' %}")
+                .then(response => response.json())
+                .then(data => {
+                    
+                    document.getElementById('total-check-ins').innerText = `Total Check-ins Today: ${data.total_check_ins}`;
+                    document.getElementById('total-check-out').innerText = `Total Check-out Today: ${data.total_check_out}`;
+                    document.getElementById('active_employees').innerText = `Active Employees on Site: ${data.active_employees}`;
+                    document.getElementById('department-data').innerText = `Departments Active Today: ${Object.keys(data.attendance_data).length}`;
+                })
+                .catch(error => console.error('Error fetching check-in data:', error));
+        }
+
+        // Load dashboard by default
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDashboard();
+        });
+    </script>
+</body>
+</html>
