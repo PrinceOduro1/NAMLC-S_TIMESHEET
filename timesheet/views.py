@@ -290,6 +290,8 @@ def download_timesheets(request):
         start_date = today - datetime.timedelta(days=30)
     elif time_range == "one_week":
         start_date = today - datetime.timedelta(days=7)
+    elif time_range == "one_year":
+        start_date = today - datetime.timedelta(days=360)
 
     month_name, week_number = get_month_week(start_date)
     sheet_name = f"{month_name} Week {week_number}"
