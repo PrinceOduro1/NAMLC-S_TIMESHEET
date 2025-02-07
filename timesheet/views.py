@@ -254,122 +254,153 @@ def view_sheet(request):
 
     return render(request, 'view_sheet.html', {'timesheets': timesheets, 'time_range': time_range})
 
-import requests
-from openpyxl.drawing.image import Image
-from django.utils.timezone import datetime as timezone_datetime
-from PIL import Image as PILImage
+import datetime
+import openpyxl
+from django.http import HttpResponse
 
-@user_passes_test(is_admin)
-def download_timesheets(request):
-    # Get the filter and search parameters
-    time_range = request.GET.get('time_range', 'all')  # Default to 'all' if no filter is applied
-    search_query = request.GET.get('search', '')  # Default to empty string if no search is applied
-
-    # Filter the timesheets based on the time range
-    if time_range == 'today':
-        timesheets = EmployeeTimesheet.objects.filter(check_in_time__date=datetime.today().date())
-    elif time_range == 'one_week':
-        timesheets = EmployeeTimesheet.objects.filter(check_in_time__gte=datetime.today() - timedelta(weeks=1))
-    elif time_range == 'one_month':
-        timesheets = EmployeeTimesheet.objects.filter(check_in_time__gte=datetime.today() - timedelta(days=30))
-    elif time_range == 'one_year':
-        timesheets = EmployeeTimesheet.objects.filter(check_in_time__gte=datetime.today() - timedelta(days=365))
+def get_month_week(date):
+    """Determine the correct month and week, ensuring no 5th week exists and each month starts fresh."""
+    if date.year == 2025 and date.month == 1:
+        first_week_start = datetime.date(2025, 1, 7)
     else:
-        timesheets = EmployeeTimesheet.objects.all()
+        first_week_start = date.replace(day=1)  
 
-    # Apply the search query filter (search by employee ID)
-    if search_query:
-        timesheets = timesheets.filter(employee__employee_id__icontains=search_query)
+    if date.day < 7:
+        return date.strftime("%B"), 1
 
-    # Create a new workbook and add a sheet
-    wb = openpyxl.Workbook()
-    sheet = wb.active
-    sheet.title = 'Timesheets'
+    week_number = ((date - first_week_start).days // 7) + 1
 
-    # Insert the logo (fetching the image from the URL)
-    logo_url = 'https://nguvumining.com/wp-content/uploads/2023/02/nguvu_black-retina.png'  # Your logo URL here
+    if week_number > 4:
+        next_month = (date.month % 12) + 1
+        next_year = date.year if date.month < 12 else date.year + 1
+        return datetime.date(next_year, next_month, 1).strftime("%B"), 1
+
+    return date.strftime("%B"), week_number
+
+
+
+def download_timesheets(request):
+    search_query = request.GET.get("search", "").strip()
+    time_range = request.GET.get("time_range", "")
+
+    today = datetime.date.today()
+    start_date, end_date = today, today
+
+    if time_range == "one_month":
+        start_date = today - datetime.timedelta(days=30)
+    elif time_range == "one_week":
+        start_date = today - datetime.timedelta(days=7)
+
+    month_name, week_number = get_month_week(start_date)
+    sheet_name = f"{month_name} Week {week_number}"
+
+    file_path = "timesheet.xlsx"
     try:
-        # Download the image from the URL
-        response = requests.get(logo_url)
-        img = PILImage.open(BytesIO(response.content))  # Open image using Pillow
-        
-        # Resize the image to fit in the cell (width: 100px, height: 50px)
-        img = img.resize((100, 50), PILImage.Resampling.LANCZOS)  # Resize the image (adjust the size as needed)
-        
-        # Save the resized image to a BytesIO object
-        img_byte_arr = BytesIO()
-        img.save(img_byte_arr, format='PNG')
-        img_byte_arr.seek(0)
-        
-        # Create openpyxl Image from the resized image
-        openpyxl_img = Image(img_byte_arr)
-        sheet.merge_cells('A1:B2')  # Merge cells for logo and title
-        sheet.add_image(openpyxl_img, 'A1')  # Add the logo at position A1
-    except requests.exceptions.RequestException as e:
-        print(f"Failed to fetch logo from URL: {e}")
-    
-    # Add title and date of printing
-    sheet.merge_cells('C1:H1')  # Merge cells for the title area
-    sheet['C1'] = 'DAILY ATTENDANCE SHEET'  # Title in the header row
-    sheet['C1'].font = openpyxl.styles.Font(size=16, bold=True)  # Make title bold and larger font
-    sheet['C1'].alignment = openpyxl.styles.Alignment(horizontal='center', vertical='center')
+        wb = openpyxl.load_workbook(file_path)
+    except FileNotFoundError:
+        wb = openpyxl.Workbook()
 
-    # Add shift title
-    sheet.merge_cells('C2:H2')  # Merge cells for the title area
-    sheet['C2'] = 'SHIFT: DAY/NIGHT'  # Title in the header row
-    sheet['C2'].font = openpyxl.styles.Font(size=11)  # Make title bold and larger font
-    sheet['C2'].alignment = openpyxl.styles.Alignment(horizontal='center', vertical='center')
+    if sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+        ws.delete_rows(1, ws.max_row)  # Clear existing data
+    else:
+        ws = wb.create_sheet(title=sheet_name)
 
-    # Add the date of printing in the top-right corner
-    sheet['L1'] = 'Date of Download: ' + timezone.now().strftime('%Y-%m-%d')
-    sheet['L1'].alignment = openpyxl.styles.Alignment(horizontal='right')  # Align date to the right
+    # Insert Date Range at the Top
+    ws["A1"] = "Date From:"
+    ws["B1"] = start_date.strftime("%Y-%m-%d")
+    ws["A2"] = "Date To:"
+    ws["B2"] = end_date.strftime("%Y-%m-%d")
 
-        # Now add headers starting from A3
-    sheet['A3'] = 'NO.'
-    sheet['B3'] = 'Employee ID'
-    sheet['C3'] = 'TIME IN'
-    sheet['D3'] = 'TIME OUT'
-    sheet['E3'] = 'HOURS WORKED'
+    headers = [
+        "NO.", "Employee ID", "Full Name", "Shift Days",
+        "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+        "Total Hours"
+    ]
 
-    # Apply font style individually to each header cell
-    font_style = openpyxl.styles.Font(size=11, bold=True)
-    sheet['A3'].font = font_style
-    sheet['B3'].font = font_style
-    sheet['C3'].font = font_style
-    sheet['D3'].font = font_style
-    sheet['E3'].font = font_style
+    for col_num, header in enumerate(headers, start=1):
+        ws.cell(row=3, column=col_num, value=header)
 
+    timesheets = EmployeeTimesheet.objects.filter(
+        employee__employee_id__icontains=search_query,
+        check_in_time__date__gte=start_date,
+        check_in_time__date__lte=end_date
+    ).order_by("check_in_time")
 
-    # Add the filtered timesheet data starting from row 4
-    for index, timesheet in enumerate(timesheets, start=1):
-        # Ensure the check-in and check-out times are naive datetime objects and format them
-        check_in_time = timesheet.check_in_time.replace(tzinfo=None) if timesheet.check_in_time else None
-        check_out_time = timesheet.check_out_time.replace(tzinfo=None) if timesheet.check_out_time else None
-        
-        # Format datetime to a string (e.g., 'YYYY-MM-DD HH:MM:SS')
-        check_in_time_str = check_in_time.strftime('%Y-%m-%d %H:%M:%S') if check_in_time else ''
-        check_out_time_str = check_out_time.strftime('%Y-%m-%d %H:%M:%S') if check_out_time else ''
+    employee_data = {}
+    for timesheet in timesheets:
+        emp_id = timesheet.employee.employee_id
+        full_name = timesheet.employee.fullname
+        check_in_date = timesheet.check_in_time.date()
+        hours = timesheet.hours_on_site or 0
 
-        row = [
+        if emp_id not in employee_data:
+            employee_data[emp_id] = {
+                "full_name": full_name,
+                "shift_days": 0,
+                "daily_hours": {day: 0 for day in ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]},
+                "total_hours": 0
+            }
+
+        day_name = check_in_date.strftime("%A")
+        employee_data[emp_id]["daily_hours"][day_name] += hours
+        employee_data[emp_id]["shift_days"] += 1
+        employee_data[emp_id]["total_hours"] += hours
+
+    row_num = 4  
+    total_shift_days = 0
+    total_hours_per_day = {day: 0 for day in ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]}
+    total_hours_overall = 0
+
+    for index, (emp_id, data) in enumerate(employee_data.items(), start=1):
+        row_data = [
             index,
-            timesheet.employee.employee_id,
-            check_in_time_str,
-            check_out_time_str,
-            timesheet.hours_on_site,
+            emp_id,
+            data["full_name"],
+            data["shift_days"],
+            data["daily_hours"]["Sunday"],
+            data["daily_hours"]["Monday"],
+            data["daily_hours"]["Tuesday"],
+            data["daily_hours"]["Wednesday"],
+            data["daily_hours"]["Thursday"],
+            data["daily_hours"]["Friday"],
+            data["daily_hours"]["Saturday"],
+            round(data["total_hours"], 2)
         ]
-        sheet.append(row)
 
-    # Create a BytesIO object to save the workbook in memory
-    file_stream = BytesIO()
-    wb.save(file_stream)
-    file_stream.seek(0)
+        total_shift_days += data["shift_days"]
+        total_hours_overall += data["total_hours"]
 
-    # Create the HTTP response to download the file
-    response = HttpResponse(file_stream, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = 'attachment; filename=timesheets.xlsx'
+        for day in total_hours_per_day:
+            total_hours_per_day[day] += data["daily_hours"][day]
+
+        for col_num, value in enumerate(row_data, start=1):
+            ws.cell(row=row_num, column=col_num, value=value)
+
+        row_num += 1  
+
+    # Insert total row
+    total_row = [
+        "TOTAL", "", "", total_shift_days,
+        total_hours_per_day["Sunday"],
+        total_hours_per_day["Monday"],
+        total_hours_per_day["Tuesday"],
+        total_hours_per_day["Wednesday"],
+        total_hours_per_day["Thursday"],
+        total_hours_per_day["Friday"],
+        total_hours_per_day["Saturday"],
+        round(total_hours_overall, 2)
+    ]
+
+    for col_num, value in enumerate(total_row, start=1):
+        ws.cell(row=row_num, column=col_num, value=value).font = openpyxl.styles.Font(bold=True)
+
+    wb.save(file_path)
+
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = f'attachment; filename="{file_path}"'
+    wb.save(response)
     return response
-
-
 from django.contrib.auth import logout
 
 def logout_view(request):
