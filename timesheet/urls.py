@@ -1,5 +1,12 @@
-from django.urls import path
+from django.urls import path,re_path
 from . import views
+from django.shortcuts import render
+from django.http import HttpResponseNotFound
+
+def custom_404(request, exception=None):
+    return render(request, '404.html', status=404)
+
+handler404 = 'nguvu_timesheet.urls.custom_404'
 
 urlpatterns = [
     path('',views.index,name='index'),
