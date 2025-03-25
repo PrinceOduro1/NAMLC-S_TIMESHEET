@@ -38,7 +38,7 @@ class EmployeeTimesheet(models.Model):
             hours = minutes_worked/60
             just_hours = int(hours)
 
-            return f"{just_hours} hours"
+            return f"{just_hours}"
         return None
 
     # Auto-calculate hours before saving

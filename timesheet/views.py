@@ -363,3 +363,43 @@ def logout_view(request):
     response['Expires'] = '0'
 
     return response
+def get_email(request):
+
+    return render(request,'get_email.html')
+
+def check_email_exists(request):
+    if request.method == "POST":
+        email = request.POST.get("email")
+        if Employee.objects.filter(username=email).exists():
+            return JsonResponse({"exists": True})
+        else:
+            return JsonResponse({"exists": False})
+    return JsonResponse({"error": "Invalid request"}, status=400)
+
+from django.contrib.auth.hashers import make_password
+def reset_password(request):
+    if request.method == "POST":
+        employee_id = request.POST.get("employee_id")
+        new_password = request.POST.get("new_password")
+        confirm_password = request.POST.get("confirm_password")
+
+        # Check if employee ID exists in the database
+        try:
+            user = Employee.objects.get(employee_id=employee_id)  # Fetch user by employee_id
+        except Employee.DoesNotExist:
+            messages.error(request, "Employee ID not found.")
+            return redirect("reset-password")
+
+        # Validate passwords
+        if new_password != confirm_password:
+            messages.error(request, "Passwords do not match.")
+            return redirect("reset-password")
+
+        # Update the user's password
+        user.password = make_password(new_password)  # Hash the password
+        user.save()
+
+        messages.success(request, "Password reset successfully!")
+        return redirect("reset-password")
+
+    return render(request, "reset-password.html")

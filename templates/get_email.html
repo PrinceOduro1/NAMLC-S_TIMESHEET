@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reset Password</title>
+
+    <!-- EmailJS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
+        /* General Styling */
+        body {
+            font-family: "Poppins", sans-serif;
+            background: linear-gradient(to right, #00c6ff, #0072ff);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        /* Form Container */
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 350px;
+            animation: fadeIn 1.5s ease-in-out;
+        }
+
+        h2 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        /* Input Fields */
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 2px solid #0072ff;
+            border-radius: 5px;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        input:focus {
+            border-color: #00c6ff;
+            box-shadow: 0 0 8px rgba(0, 198, 255, 0.5);
+        }
+
+        /* Button Styling */
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(to right, #0072ff, #00c6ff);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 114, 255, 0.3);
+        }
+
+        /* Fade In Animation */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="form-container">
+        <h2>Reset Password</h2>
+        <form id="emailForm">
+            <input type="email" id="toEmail" placeholder="Enter your email" required>
+            <button type="submit">Send Reset Link</button>
+        </form>
+    </div>
+
+    <script>
+        // Initialize EmailJS
+        window.onload = function() {
+            emailjs.init("mkMI5IK58_MG_xXlf"); // Replace with your actual User ID
+        };
+
+        document.getElementById("emailForm").addEventListener("submit", function(event) {
+            event.preventDefault(); // Prevent page refresh
+            
+            var userEmail = document.getElementById("toEmail").value;
+
+            // Check if the email exists in the database before sending the reset email
+            fetch('/check-email/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCSRFToken() // CSRF protection
+                },
+                body: new URLSearchParams({ 'email': userEmail })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    sendResetEmail(userEmail); // Send the reset link if email exists
+                } else {
+                    alert("Email not found in our database.");
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+            });
+        });
+
+        function sendResetEmail(userEmail) {
+            var resetLink = "http://127.0.0.1:8000/reset-password"; // Replace with actual reset link
+
+            emailjs.send("service_94433dp", "template_5a43qvf", {
+                email: userEmail, 
+                link: resetLink 
+            })
+            .then(response => {
+                alert("Password reset email sent successfully!");
+            })
+            .catch(error => {
+                alert("Failed to send password reset email.");
+                console.error("Error:", error);
+            });
+        }
+
+        function getCSRFToken() {
+            return document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+        }
+    </script>
+
+</body>
+</html>

@@ -11,6 +11,9 @@ urlpatterns = [
     path('get_employee_attendance_data/', views.get_employee_attendance_data, name='get_employee_attendance_data'),
     path('view_timesheet/', views.view_sheet, name='view_timesheet'),
     path('download_timesheets/', views.download_timesheets, name='download_timesheets'),
-    path('logout/', views.logout_view, name='logout')
+    path('logout/', views.logout_view, name='logout'),
+    path('reset-password',views.reset_password,name='reset-password'),
+    path('get_email_reset?password',views.get_email,name='get_email'),
+    path('check-email/', views.check_email_exists, name='check_email_exists')
 
 ]
