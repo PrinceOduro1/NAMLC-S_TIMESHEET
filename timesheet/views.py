@@ -320,36 +320,97 @@ def download_timesheets(request):
     ws["A2"] = "Date To:"
     ws["B2"] = end_date.strftime("%Y-%m-%d")
 
-    headers = ["NO.", "Employee ID", "Full Name", "Check-In Time", "Check-Out Time", "Hours on Site"]
+    headers = [
+        "NO.", "Employee ID", "Full Name", "Working Days",
+        "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+        "Total Hours"
+    ]
+
     for col_num, header in enumerate(headers, start=1):
         ws.cell(row=3, column=col_num, value=header)
 
-    # Fetch Data from Database
-    timesheets = EmployeeTimesheet.objects.filter(check_in_time__date__range=[start_date, end_date])
+    timesheets = EmployeeTimesheet.objects.filter(
+        employee__employee_id__icontains=search_query,
+        check_in_time__date__gte=start_date,
+        check_in_time__date__lte=end_date
+    ).order_by("check_in_time")
 
-    if search_query:
-        timesheets = timesheets.filter(employee__fullname__icontains=search_query)
+    employee_data = {}
+    for timesheet in timesheets:
+        emp_id = timesheet.employee.employee_id
+        full_name = timesheet.employee.fullname
+        check_in_date = timesheet.check_in_time.date()
+        hours = timesheet.hours_worked or 0
 
-    # Populate Data in Excel
-    row_num = 4
-    for index, timesheet in enumerate(timesheets, start=1):
-        ws.cell(row=row_num, column=1, value=index)
-        ws.cell(row=row_num, column=2, value=timesheet.employee.employee_id)
-        ws.cell(row=row_num, column=3, value=timesheet.employee.fullname)
-        ws.cell(row=row_num, column=4, value=timesheet.check_in_time.strftime("%Y-%m-%d %H:%M:%S") if timesheet.check_in_time else "N/A")
-        ws.cell(row=row_num, column=5, value=timesheet.check_out_time.strftime("%Y-%m-%d %H:%M:%S") if timesheet.check_out_time else "N/A")
-        ws.cell(row=row_num, column=6, value=timesheet.hours_on_site or "N/A")
-        row_num += 1
+        if emp_id not in employee_data:
+            employee_data[emp_id] = {
+                "full_name": full_name,
+                "shift_days": 0,
+                "daily_hours": {day: 0 for day in ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]},
+                "total_hours": 0
+            }
 
-    # Save the Excel file
-    excel_file = "timesheet.xlsx"
-    wb.save(excel_file)
+        day_name = check_in_date.strftime("%A")
+        employee_data[emp_id]["daily_hours"][day_name] += hours
+        employee_data[emp_id]["shift_days"] += 1
+        employee_data[emp_id]["total_hours"] += hours
 
-    # Prepare HTTP response for download
-    with open(excel_file, "rb") as f:
-        response = HttpResponse(f.read(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        response["Content-Disposition"] = f'attachment; filename="{excel_file}"'
-        return response
+    row_num = 4  
+    total_shift_days = 0
+    total_hours_per_day = {day: 0 for day in ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]}
+    total_hours_overall = 0
+
+    for index, (emp_id, data) in enumerate(employee_data.items(), start=1):
+        row_data = [
+            index,
+            emp_id,
+            data["full_name"],
+            data["shift_days"],
+            data["daily_hours"]["Sunday"],
+            data["daily_hours"]["Monday"],
+            data["daily_hours"]["Tuesday"],
+            data["daily_hours"]["Wednesday"],
+            data["daily_hours"]["Thursday"],
+            data["daily_hours"]["Friday"],
+            data["daily_hours"]["Saturday"],
+            round(data["total_hours"], 2)
+        ]
+
+        total_shift_days += data["shift_days"]
+        total_hours_overall += data["total_hours"]
+
+        for day in total_hours_per_day:
+            total_hours_per_day[day] += data["daily_hours"][day]
+
+        for col_num, value in enumerate(row_data, start=1):
+            ws.cell(row=row_num, column=col_num, value=value)
+
+        row_num += 1  
+
+    # Insert total row
+    total_row = [
+        "TOTAL", "", "", total_shift_days,
+        total_hours_per_day["Sunday"],
+        total_hours_per_day["Monday"],
+        total_hours_per_day["Tuesday"],
+        total_hours_per_day["Wednesday"],
+        total_hours_per_day["Thursday"],
+        total_hours_per_day["Friday"],
+        total_hours_per_day["Saturday"],
+        round(total_hours_overall, 2)
+    ]
+
+    # Insert total hours overall
+    ws.cell(row=row_num, column=11, value="Total Hours Overall:").font = openpyxl.styles.Font(bold=True)
+    ws.cell(row=row_num, column=12, value=round(total_hours_overall, 2)).font = openpyxl.styles.Font(bold=True)
+
+
+    wb.save(file_path)
+
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = f'attachment; filename="{file_path}"'
+    wb.save(response)
+    return response
     
 from django.contrib.auth import logout
 

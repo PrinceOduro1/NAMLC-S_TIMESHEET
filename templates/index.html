@@ -13,6 +13,14 @@
             flex-direction: column;
             min-height: 100vh;
         }
+	.navbar-brand img {
+   	max-height: 80px; /* Adjust as needed */
+    	width: auto; /* Maintains aspect ratio */
+    	background-color: white; /* Adds white background */
+   	padding: 5px; /* Adds some spacing */
+   	border-radius: 5px; 
+	}
+
         .hero-section {
             background: url("{% static 'img/nguvu-elephant-2024-scaled.jpg' %}") no-repeat center center/cover;
             height: 100vh;
@@ -128,7 +136,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">
-                <img src="{% static 'img/nguvu_black-retina.png' %}" alt="NGUVU LIMITED" width="200">
+                <img src="{% static 'img/LOGO.png' %}" alt="NGUVU LIMITED" width="200">
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -156,23 +164,37 @@
     <br>
     <section class="section instruction" aria-labelledby="instruction-label">
         <div class="container">
-            <strong><h2 class="h2 text-center">OUR MISSION AND VISION</h2></strong>
+            <strong><h2 class="h2 text-center">OUR MISSION, VISION AND VALUES</h2></strong>
             <br>
             <div class="grid-list">
                 <div class="instruction-card">
                     <img src="{% static 'img/download.jpeg' %}" alt="Our Mission" class="w-100">
                     <h3 class="h5 card-title">OUR MISSION</h3>
-                    <p>Magna sit amet purus gravida quis blandit turpis cursus.</p>
+		    <ul>
+    			<li>We rejuvenate, expand and operate medium size mining assets in Africa.</li>
+			<li>We continue to undertake brownfield and greenfield exploration</li>
+			<li>We continue to undertake brownfield and greenfield exploration</li>
+			<li>We work in harmony with our stakeholders and demonstrate outstanding corporate citizenship.</li>
+		    </ul>
                 </div>
                 <div class="instruction-card">
                     <img src="{% static 'img/vision.jpeg' %}" alt="Our Vision" class="w-100">
                     <h3 class="h5 card-title">OUR VISION</h3>
-                    <p>Non enim praesent elementum facilisis leo vel fringilla.</p>
+                    <ul>
+    			<li>By 2025 Nguvu will be an independent mid-size African gold producer, producing 500kOz/a with a 10% annual growth, through optimization, exploration and acquisition</li>
+			<li>We subscribe to the responsible mining agenda</li>
+			<li>We pursue Safety, Health and Environmental management leadership</li>
+		    </ul>
                 </div>
                 <div class="instruction-card">
-                    <img src="{% static 'img/progress.jpeg' %}" alt="Our Vision" class="w-100">
-                    <h3 class="h5 card-title">OUR PROGRESS</h3>
-                    <p>Non enim praesent elementum facilisis leo vel fringilla.</p>
+                    <img src="{% static 'img/values.jpeg' %}" alt="Our Vision" class="w-100">
+                    <h3 class="h5 card-title">OUR VALUES</h3>
+                     <p>&#8226; Integrity</p>
+		     <p>&#8226; Teamwork</p>
+		     <p>&#8226; Duty of care</p>
+		     <p>&#8226; Commitment & accountability</p>
+		     <p>&#8226; Respect and fairness</p>
+
                 </div>
             </div>
         </div>
@@ -187,8 +209,8 @@
                 </div>
                 <div class="col-md-6" id="contact">
                     <h4>Contact Us</h4>
-                    <p>Email: support@nguvu.com</p>
-                    <p>Phone: +123 456 7890</p>
+                    <p>Email: info@northernashantimines.com</p>
+                    <p>Phone: 032 200 8510</p>
                 </div>
             </div>
             <p>&copy; 2025 NGUVU LIMITED. All rights reserved.</p>
