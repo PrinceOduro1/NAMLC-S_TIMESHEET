@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Face Sign In</h2>
+<video id="video" width="640" height="480" autoplay></video>
+<button id="capture">Capture</button>
+<canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+
+<form method="post" enctype="multipart/form-data" id="form">
+  {% csrf_token %}
+  <input type="file" name="face_photo" id="face_photo_input" style="display: none;" />
+</form>
+
+<script>
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const captureBtn = document.getElementById('capture');
+  const form = document.getElementById('form');
+  const facePhotoInput = document.getElementById('face_photo_input');
+
+  // Access camera
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => video.srcObject = stream)
+    .catch(err => console.error("Camera error: ", err));
+
+  captureBtn.addEventListener('click', () => {
+    canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
+    canvas.toBlob(blob => {
+      const file = new File([blob], "captured_face.jpg", { type: "image/jpeg" });
+
+      // Create a DataTransfer to programmatically set file input
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      facePhotoInput.files = dataTransfer.files;
+
+      form.submit();
+    }, 'image/jpeg');
+  });
+</script>
+
+{% endblock %}

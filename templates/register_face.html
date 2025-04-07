@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Register Face</h2>
+<form method="post" enctype="multipart/form-data" >
+    {% csrf_token %}
+    <div>
+        <label>Employee ID:</label>
+        <input type="text" name="employee_id" required>
+    </div>
+    <div>
+        <label>Face Photo:</label>
+        <input type="file" name="face_photo" accept="image/*" required>
+    </div>
+    <button type="submit">Register</button>
+</form>
+{% endblock %}

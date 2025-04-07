@@ -21,6 +21,9 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('reset-password',views.reset_password,name='reset-password'),
     path('get_email_reset?password',views.get_email,name='get_email'),
-    path('check-email/', views.check_email_exists, name='check_email_exists')
+    path('check-email/', views.check_email_exists, name='check_email_exists'),
+    path('register-face/', views.register_face, name='register-face'),
+    path('face-sign-in/', views.face_sign_in, name='face_sign_in'),
+    path('face-sign-out/', views.face_sign_out, name='face_sign_out'),
 
 ]

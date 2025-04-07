@@ -464,3 +464,224 @@ def reset_password(request):
         return redirect("reset-password")
 
     return render(request, "reset-password.html")
+
+
+#face id implementation
+from deepface import DeepFace
+import os
+from django.conf import settings
+
+def register_face(request):
+    if request.method == 'POST':
+        employee_id = request.POST.get('employee_id')
+        face_photo = request.FILES.get('face_photo')
+        
+        try:
+            employee = Employee.objects.get(employee_id=employee_id)
+            
+            # Save the face photo
+            employee.face_photo = face_photo
+            employee.save()
+            
+            messages.success(request, "Face registered successfully!")
+            return redirect('index')
+            
+        except Employee.DoesNotExist:
+            messages.error(request, "Employee not found")
+    
+    return render(request, 'register_face.html')
+import time
+def face_sign_in(request):
+    if request.method == 'POST':
+        if 'face_photo' not in request.FILES:
+            messages.error(request, "Please capture or upload a face photo")
+            return redirect('face_sign_in')
+
+        uploaded_file = request.FILES['face_photo']
+
+        if uploaded_file.size > 5 * 1024 * 1024:
+            messages.error(request, "Image too large (max 5MB)")
+            return redirect('face_sign_in')
+
+        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp')
+        os.makedirs(temp_dir, exist_ok=True)
+
+        temp_filename = f"temp_face_{request.session.session_key}_{int(time.time())}.jpg"
+        temp_path = os.path.join(temp_dir, temp_filename)
+
+        try:
+            with open(temp_path, 'wb+') as destination:
+                for chunk in uploaded_file.chunks():
+                    destination.write(chunk)
+
+            employees = Employee.objects.filter(face_photo__isnull=False)
+
+            verification_params = {
+                'model_name': 'Facenet',
+                'detector_backend': 'opencv',
+                'distance_metric': 'cosine',
+                'enforce_detection': True,
+                'threshold': 0.65
+            }
+
+            match_found = False
+
+            for employee in employees:
+                try:
+                    print(f"Checking face for: {employee.employee_id}")
+                    result = DeepFace.verify(
+                        img1_path=temp_path,
+                        img2_path=employee.face_photo.path,
+                        **verification_params
+                    )
+                    print(f"Verification result for {employee.employee_id}: {result}")
+
+                    if result['verified']:
+                        match_found = True
+                        login(request, employee)
+                        check_in_time = timezone.now()
+                        today = check_in_time.date()
+
+                        last_entry = EmployeeTimesheet.objects.filter(
+                            employee=employee
+                        ).order_by('-check_in_time').first()
+
+                        if last_entry:
+                            time_difference = check_in_time - last_entry.check_in_time
+                            if last_entry.check_out_time is None:
+                                if time_difference.total_seconds() < 43200:
+                                    messages.error(request, "You must sign out first before signing in again.")
+                                    return redirect('face_sign_in')
+
+                        yesterday = today - timedelta(days=1)
+                        EmployeeTimesheet.objects.filter(
+                            employee=employee,
+                            check_in_time__date=yesterday,
+                            check_out_time__isnull=True
+                        ).delete()
+
+                        EmployeeTimesheet.objects.create(
+                            employee=employee,
+                            check_in_time=check_in_time
+                        )
+
+                        messages.success(request, f"Welcome back, {employee.fullname}!")
+                        return redirect('index')
+
+                except Exception as e:
+                    print(f"Face comparison error for {employee.employee_id}: {str(e)}")
+                    continue
+
+            if not match_found:
+                print("No verified face match found.")
+                messages.error(request, "Face not recognized. Please try again or use password login.")
+
+        except Exception as e:
+            messages.error(request, "Error processing your photo")
+            print(f"Face auth system error: {str(e)}")
+
+        finally:
+            try:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+            except:
+                pass
+
+    return render(request, 'signin_face.html')
+
+
+def face_sign_out(request):
+    if request.method == 'POST':
+        if 'face_photo' not in request.FILES:
+            messages.error(request, "Please capture or upload a face photo")
+            return redirect('face_sign_out')
+
+        uploaded_file = request.FILES['face_photo']
+
+        if uploaded_file.size > 5 * 1024 * 1024:
+            messages.error(request, "Image too large (max 5MB)")
+            return redirect('face_sign_out')
+
+        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp')
+        os.makedirs(temp_dir, exist_ok=True)
+
+        temp_filename = f"temp_face_{request.session.session_key}_{int(time.time())}.jpg"
+        temp_path = os.path.join(temp_dir, temp_filename)
+
+        try:
+            with open(temp_path, 'wb+') as destination:
+                for chunk in uploaded_file.chunks():
+                    destination.write(chunk)
+
+            employees = Employee.objects.filter(face_photo__isnull=False)
+
+            verification_params = {
+                'model_name': 'Facenet',
+                'detector_backend': 'opencv',
+                'distance_metric': 'cosine',
+                'enforce_detection': True,
+                'threshold': 0.65
+            }
+
+            match_found = False
+
+            for employee in employees:
+                try:
+                    print(f"Checking face for: {employee.employee_id}")
+                    result = DeepFace.verify(
+                        img1_path=temp_path,
+                        img2_path=employee.face_photo.path,
+                        **verification_params
+                    )
+                    print(f"Verification result for {employee.employee_id}: {result}")
+
+                    if result['verified']:
+                        match_found = True
+                        logout(request)
+                        check_out_time = timezone.now()
+                        today = check_out_time.date()
+
+                        # Get the last sign-in entry for this employee
+                        last_entry = EmployeeTimesheet.objects.filter(
+                            employee=employee, check_in_time__isnull=False
+                        ).order_by('-check_in_time').first()
+
+                        if last_entry:
+                            last_check_in = last_entry.check_in_time
+                            time_difference = check_out_time - last_check_in
+
+                            # Check if the last check-in was more than 15 hours ago
+                            if time_difference > timedelta(hours=15):
+                                messages.error(request, "Your last sign-in was more than 15 hours ago. Please sign in again before signing out.")
+                                return redirect('face_sign_out')
+
+                            # Record the check-out time if sign-out is allowed
+                            last_entry.check_out_time = check_out_time
+                            last_entry.save()
+
+                            messages.success(request, f"Goodbye, {employee.fullname}! You've successfully signed out.")
+                            return redirect('index')
+
+                        else:
+                            messages.error(request, "No valid check-in record found for sign-out.")
+                            return redirect('face_sign_out')
+
+                except Exception as e:
+                    print(f"Face comparison error for {employee.employee_id}: {str(e)}")
+                    continue
+
+            if not match_found:
+                messages.error(request, "Face not recognized. Please try again or use password login.")
+
+        except Exception as e:
+            messages.error(request, "Error processing your photo")
+            print(f"Face auth system error: {str(e)}")
+
+        finally:
+            try:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+            except:
+                pass
+
+    return render(request, 'signout_face.html')

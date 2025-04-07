@@ -1,0 +1,65 @@
+import os
+import cv2
+import face_recognition
+import numpy as np
+from django.conf import settings
+from .models import Employee
+
+class FaceRecognitionService:
+    def __init__(self):
+        self.known_face_encodings = []
+        self.known_face_employee_ids = []
+        self.load_known_faces()
+
+    def load_known_faces(self):
+        """Load all employee face encodings from the database"""
+        employees = Employee.objects.all()
+        for employee in employees:
+            if employee.employee_image:
+                image_path = os.path.join(settings.MEDIA_ROOT, str(employee.employee_image))
+                if os.path.exists(image_path):
+                    image = face_recognition.load_image_file(image_path)
+                    encodings = face_recognition.face_encodings(image)
+                    if encodings:
+                        self.known_face_encodings.append(encodings[0])
+                        self.known_face_employee_ids.append(employee.employee_id)
+
+    def recognize_face(self, frame):
+        """Recognize a face from a camera frame"""
+        # Resize frame for faster processing
+        small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+        
+        # Convert to RGB (face_recognition uses RGB)
+        rgb_small_frame = small_frame[:, :, ::-1]
+
+        # Find all face locations and encodings
+        face_locations = face_recognition.face_locations(rgb_small_frame)
+        face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
+
+        recognized_employee_id = None
+
+        for face_encoding in face_encodings:
+            # Compare with known faces
+            matches = face_recognition.compare_faces(self.known_face_encodings, face_encoding)
+            face_distances = face_recognition.face_distance(self.known_face_encodings, face_encoding)
+            best_match_index = np.argmin(face_distances)
+
+            if matches[best_match_index]:
+                recognized_employee_id = self.known_face_employee_ids[best_match_index]
+                break
+
+        return recognized_employee_id
+
+    def capture_and_register_face(self, employee_id, image_path):
+        """Capture and register a new face"""
+        # Load the image
+        image = face_recognition.load_image_file(image_path)
+        encodings = face_recognition.face_encodings(image)
+        
+        if not encodings:
+            return False
+        
+        # Update the known faces
+        self.known_face_encodings.append(encodings[0])
+        self.known_face_employee_ids.append(employee_id)
+        return True

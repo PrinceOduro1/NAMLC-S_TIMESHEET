@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-*)h=8m6%rk%o@z$&=si#o2cpy*uh@^9(k5&bopw3b8&(3de4!u
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['10.233.98.55', 'localhost']
+ALLOWED_HOSTS = ['10.233.98.141','127.0.0.1','localhost']
 
 
 # Application definition
@@ -37,7 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'timesheet'
+    'timesheet',
+    'corsheaders'
 ]
 
 MIDDLEWARE = [
@@ -48,7 +49,11 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware'
 ]
+
+CORS_ORIGIN_ALLOW_ALL = True
 
 ROOT_URLCONF = 'nguvu_timesheet.urls'
 
@@ -135,4 +140,23 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     BASE_DIR / "static",  # Assuming 'static' folder is at the root of your project
 ]
+import os
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+import dj_database_url
+DATABASES['default'] = dj_database_url.config(conn_max_age=600, ssl_require=True)
+
+import django_heroku
+django_heroku.settings(locals())
+
+STATIC_URL = '/static/'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+import environ
+
+env = environ.Env()
+environ.Env.read_env()  # Reads the .env file
+
+SECRET_KEY = env('SECRET_KEY')
+DEBUG = env('DEBUG', default=False)

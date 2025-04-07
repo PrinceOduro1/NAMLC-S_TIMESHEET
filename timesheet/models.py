@@ -10,6 +10,7 @@ class Employee(AbstractUser):
     department = models.CharField(max_length=100)
     role = models.CharField(max_length=50)
     password = models.CharField(max_length=128, default=False)
+    face_photo = models.ImageField(upload_to='employee_faces/', null=True, blank=True)  # Add this line
 
     def __str__(self):
         return f"{self.employee_id} ({self.department})"
