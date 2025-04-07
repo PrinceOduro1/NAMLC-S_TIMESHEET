@@ -159,5 +159,4 @@ import environ
 env = environ.Env()
 environ.Env.read_env()  # Reads the .env file
 
-SECRET_KEY = env('django-insecure-*)h=8m6%rk%o@z$&=si#o2cpy*uh@^9(k5&bopw3b8&(3de4!u')
-DEBUG = env('DEBUG', default=False)
+
