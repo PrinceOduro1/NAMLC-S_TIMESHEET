@@ -1,1 +1,1 @@
-python-3.10.12  # TensorFlow 2.19 works best with Python 3.10
+python-3.10.12
