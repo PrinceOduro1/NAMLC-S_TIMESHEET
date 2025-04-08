@@ -141,14 +141,12 @@ STATICFILES_DIRS = [
     BASE_DIR / "static",  # Assuming 'static' folder is at the root of your project
 ]
 import os
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+import dj_database_url
 
-import django_heroku
-django_heroku.settings(locals())
-
-STATIC_URL = '/static/'
+DATABASES['default'] = dj_database_url.config(default='postgresql://namlc_timesheet_user:o7siTHgBPlpc8dk4FaWPQXnLwsoSs5xM@dpg-cvqianngi27c73elr46g-a/namlc_timesheet')
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
 
 
 
