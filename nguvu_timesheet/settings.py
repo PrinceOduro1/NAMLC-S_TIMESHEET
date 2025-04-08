@@ -149,10 +149,9 @@ django_heroku.settings(locals())
 
 STATIC_URL = '/static/'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+from dotenv import load_dotenv
+import os
 
-import environ
-
-env = environ.Env()
-environ.Env.read_env()  # Reads the .env file
+load_dotenv()  # Load environment variables from .env file
 
 
